@@ -63,7 +63,34 @@ const ProfilePage: React.FC = () => {
         .order('created_at', { ascending: false });
 
       if (videosError) throw videosError;
-      setVideos(videosData || []);
+
+      // Update video counts
+      const updatedVideos = await Promise.all((videosData || []).map(async (video) => {
+        // Get actual views count
+        const { count: viewsCount } = await supabase
+          .from('video_views')
+          .select('*', { count: 'exact', head: true })
+          .eq('video_id', video.id);
+
+        // Update video with new counts
+        const { error: updateError } = await supabase
+          .from('videos')
+          .update({ 
+            views_count: viewsCount || 0
+          })
+          .eq('id', video.id);
+
+        if (updateError) {
+          console.error('Error updating video counts:', updateError);
+        }
+
+        return {
+          ...video,
+          views_count: viewsCount || 0
+        };
+      }));
+
+      setVideos(updatedVideos);
 
       if (isCurrentUser) {
         // Fetch liked video IDs first
@@ -88,7 +115,34 @@ const ProfilePage: React.FC = () => {
             .order('created_at', { ascending: false });
 
           if (likedError) throw likedError;
-          setLikedVideos(likedData || []);
+
+          // Update liked videos counts
+          const updatedLikedVideos = await Promise.all((likedData || []).map(async (video) => {
+            // Get actual views count
+            const { count: viewsCount } = await supabase
+              .from('video_views')
+              .select('*', { count: 'exact', head: true })
+              .eq('video_id', video.id);
+
+            // Update video with new counts
+            const { error: updateError } = await supabase
+              .from('videos')
+              .update({ 
+                views_count: viewsCount || 0
+              })
+              .eq('id', video.id);
+
+            if (updateError) {
+              console.error('Error updating video counts:', updateError);
+            }
+
+            return {
+              ...video,
+              views_count: viewsCount || 0
+            };
+          }));
+
+          setLikedVideos(updatedLikedVideos);
         }
 
         // Fetch saved video IDs first
@@ -113,7 +167,34 @@ const ProfilePage: React.FC = () => {
             .order('created_at', { ascending: false });
 
           if (savedError) throw savedError;
-          setSavedVideos(savedData || []);
+
+          // Update saved videos counts
+          const updatedSavedVideos = await Promise.all((savedData || []).map(async (video) => {
+            // Get actual views count
+            const { count: viewsCount } = await supabase
+              .from('video_views')
+              .select('*', { count: 'exact', head: true })
+              .eq('video_id', video.id);
+
+            // Update video with new counts
+            const { error: updateError } = await supabase
+              .from('videos')
+              .update({ 
+                views_count: viewsCount || 0
+              })
+              .eq('id', video.id);
+
+            if (updateError) {
+              console.error('Error updating video counts:', updateError);
+            }
+
+            return {
+              ...video,
+              views_count: viewsCount || 0
+            };
+          }));
+
+          setSavedVideos(updatedSavedVideos);
         }
       }
 

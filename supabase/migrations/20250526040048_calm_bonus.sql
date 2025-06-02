@@ -98,15 +98,29 @@ CREATE OR REPLACE FUNCTION create_notification()
 RETURNS TRIGGER AS $$
 BEGIN
   IF TG_TABLE_NAME = 'likes' THEN
-    INSERT INTO notifications (user_id, type, actor_id, reference_id)
-    SELECT v.user_id, 'like', NEW.user_id, v.id
-    FROM videos v
-    WHERE v.id = NEW.video_id AND v.user_id != NEW.user_id;
+    IF NEW.content_type = 'video' THEN
+      INSERT INTO notifications (user_id, type, actor_id, reference_id)
+      SELECT v.user_id, 'like', NEW.user_id, v.id
+      FROM videos v
+      WHERE v.id = NEW.content_id AND v.user_id != NEW.user_id;
+    ELSIF NEW.content_type = 'image_post' THEN
+      INSERT INTO notifications (user_id, type, actor_id, reference_id)
+      SELECT p.user_id, 'like', NEW.user_id, p.id
+      FROM image_posts p
+      WHERE p.id = NEW.content_id AND p.user_id != NEW.user_id;
+    END IF;
   ELSIF TG_TABLE_NAME = 'comments' THEN
-    INSERT INTO notifications (user_id, type, actor_id, reference_id)
-    SELECT v.user_id, 'comment', NEW.user_id, v.id
-    FROM videos v
-    WHERE v.id = NEW.video_id AND v.user_id != NEW.user_id;
+    IF NEW.content_type = 'video' THEN
+      INSERT INTO notifications (user_id, type, actor_id, reference_id)
+      SELECT v.user_id, 'comment', NEW.user_id, v.id
+      FROM videos v
+      WHERE v.id = NEW.content_id AND v.user_id != NEW.user_id;
+    ELSIF NEW.content_type = 'image_post' THEN
+      INSERT INTO notifications (user_id, type, actor_id, reference_id)
+      SELECT p.user_id, 'comment', NEW.user_id, p.id
+      FROM image_posts p
+      WHERE p.id = NEW.content_id AND p.user_id != NEW.user_id;
+    END IF;
   ELSIF TG_TABLE_NAME = 'follows' THEN
     INSERT INTO notifications (user_id, type, actor_id, reference_id)
     SELECT NEW.following_id, 'follow', NEW.follower_id, NULL

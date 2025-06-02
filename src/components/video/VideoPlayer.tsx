@@ -134,7 +134,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ video, isActive }) => {
       const currentTime = videoRef.current?.currentTime || 0;
       const watchPercentage = (currentTime / duration) * 100;
 
-      const { error } = await supabase
+      // Registrar la vista en video_views
+      const { error: viewError } = await supabase
         .from('video_views')
         .upsert({
           video_id: video.id,
@@ -146,8 +147,32 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ video, isActive }) => {
           onConflict: 'video_id,user_id'
         });
 
-      if (error) {
-        console.error('Error recording view:', error);
+      if (viewError) {
+        console.error('Error recording view:', viewError);
+        return;
+      }
+
+      // Obtener el conteo actual de vistas
+      const { count: viewsCount, error: countError } = await supabase
+        .from('video_views')
+        .select('*', { count: 'exact', head: true })
+        .eq('video_id', video.id);
+
+      if (countError) {
+        console.error('Error getting views count:', countError);
+        return;
+      }
+
+      // Actualizar el contador de vistas en la tabla videos
+      const { error: updateError } = await supabase
+        .from('videos')
+        .update({ 
+          views_count: viewsCount || 0
+        })
+        .eq('id', video.id);
+
+      if (updateError) {
+        console.error('Error updating views count:', updateError);
       }
     } catch (error) {
       console.error('Error recording view:', error);

@@ -151,7 +151,51 @@ export const useVideoStore = create<VideoState>((set, get) => ({
         
       if (error) throw error;
       
-      const newVideos = page === 0 ? data : [...videos, ...data];
+      // Update likes, comments and views counts
+      const updatedVideos = await Promise.all(data.map(async (video) => {
+        // Get actual likes count
+        const { count: likesCount } = await supabase
+          .from('likes')
+          .select('*', { count: 'exact', head: true })
+          .eq('content_type', 'video')
+          .eq('content_id', video.id);
+
+        // Get actual comments count
+        const { count: commentsCount } = await supabase
+          .from('comments')
+          .select('*', { count: 'exact', head: true })
+          .eq('content_type', 'video')
+          .eq('content_id', video.id);
+
+        // Get actual views count
+        const { count: viewsCount } = await supabase
+          .from('video_views')
+          .select('*', { count: 'exact', head: true })
+          .eq('video_id', video.id);
+
+        // Update video with new counts
+        const { error: updateError } = await supabase
+          .from('videos')
+          .update({ 
+            likes_count: likesCount || 0,
+            comments_count: commentsCount || 0,
+            views_count: viewsCount || 0
+          })
+          .eq('id', video.id);
+
+        if (updateError) {
+          console.error('Error updating video counts:', updateError);
+        }
+
+        return {
+          ...video,
+          likes_count: likesCount || 0,
+          comments_count: commentsCount || 0,
+          views_count: viewsCount || 0
+        };
+      }));
+
+      const newVideos = page === 0 ? updatedVideos : [...videos, ...updatedVideos];
       set({ 
         videos: newVideos,
         hasMore: data.length === PAGE_SIZE,
@@ -296,31 +340,60 @@ export const useVideoStore = create<VideoState>((set, get) => ({
       const user = (await supabase.auth.getUser()).data.user;
       if (!user) throw new Error('User not authenticated');
       
-      const { data: existingLike } = await supabase
+      // Check if user already liked the video
+      const { data: existingLike, error: checkError } = await supabase
         .from('likes')
         .select()
         .eq('user_id', user.id)
-        .eq('video_id', videoId)
+        .eq('content_id', videoId)
+        .eq('content_type', 'video')
         .maybeSingle();
         
-      if (existingLike) {
-        await supabase
-          .from('likes')
-          .delete()
-          .eq('user_id', user.id)
-          .eq('video_id', videoId);
-      } else {
-        await supabase
+      if (checkError) throw checkError;
+
+      // If user hasn't liked the video yet, add the like
+      if (!existingLike) {
+        const { error: insertError } = await supabase
           .from('likes')
           .insert({
             user_id: user.id,
-            video_id: videoId,
+            content_id: videoId,
+            content_type: 'video',
+            video_id: videoId
           });
+
+        if (insertError) {
+          // If insert fails due to unique constraint, ignore it
+          if (insertError.code !== '23505') {
+            throw insertError;
+          }
+        }
+
+        // Get updated likes count
+        const { count: likesCount, error: countError } = await supabase
+          .from('likes')
+          .select('*', { count: 'exact', head: true })
+          .eq('content_type', 'video')
+          .eq('content_id', videoId);
+
+        if (countError) throw countError;
+
+        // Update video likes count
+        const { error: updateError } = await supabase
+          .from('videos')
+          .update({ 
+            likes_count: likesCount || 0
+          })
+          .eq('id', videoId);
+
+        if (updateError) throw updateError;
       }
       
+      // Refresh videos to show updated counts
       await get().fetchVideos(0);
     } catch (error) {
       console.error('Error liking video:', error);
+      throw error;
     }
   },
 
