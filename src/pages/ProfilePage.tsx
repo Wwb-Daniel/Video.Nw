@@ -66,37 +66,55 @@ const ProfilePage: React.FC = () => {
       setVideos(videosData || []);
 
       if (isCurrentUser) {
-        const { data: likedData, error: likedError } = await supabase
-          .from('videos')
-          .select(`
-            *,
-            user_profile:profiles(id, username, avatar_url)
-          `)
-          .in('id', (await supabase
-            .from('likes')
-            .select('video_id')
-            .eq('user_id', id))
-            .data?.map(like => like.video_id) || [])
-          .order('created_at', { ascending: false });
+        // Fetch liked video IDs first
+        const { data: likedVideoIds } = await supabase
+          .from('likes')
+          .select('video_id')
+          .eq('user_id', id);
 
-        if (likedError) throw likedError;
-        setLikedVideos(likedData || []);
+        // Filter out null values and extract video IDs
+        const validLikedVideoIds = (likedVideoIds || [])
+          .map(like => like.video_id)
+          .filter(Boolean);
 
-        const { data: savedData, error: savedError } = await supabase
-          .from('videos')
-          .select(`
-            *,
-            user_profile:profiles(id, username, avatar_url)
-          `)
-          .in('id', (await supabase
-            .from('video_saves')
-            .select('video_id')
-            .eq('user_id', id))
-            .data?.map(save => save.video_id) || [])
-          .order('created_at', { ascending: false });
+        if (validLikedVideoIds.length > 0) {
+          const { data: likedData, error: likedError } = await supabase
+            .from('videos')
+            .select(`
+              *,
+              user_profile:profiles(id, username, avatar_url)
+            `)
+            .in('id', validLikedVideoIds)
+            .order('created_at', { ascending: false });
 
-        if (savedError) throw savedError;
-        setSavedVideos(savedData || []);
+          if (likedError) throw likedError;
+          setLikedVideos(likedData || []);
+        }
+
+        // Fetch saved video IDs first
+        const { data: savedVideoIds } = await supabase
+          .from('video_saves')
+          .select('video_id')
+          .eq('user_id', id);
+
+        // Filter out null values and extract video IDs
+        const validSavedVideoIds = (savedVideoIds || [])
+          .map(save => save.video_id)
+          .filter(Boolean);
+
+        if (validSavedVideoIds.length > 0) {
+          const { data: savedData, error: savedError } = await supabase
+            .from('videos')
+            .select(`
+              *,
+              user_profile:profiles(id, username, avatar_url)
+            `)
+            .in('id', validSavedVideoIds)
+            .order('created_at', { ascending: false });
+
+          if (savedError) throw savedError;
+          setSavedVideos(savedData || []);
+        }
       }
 
       setError(null);

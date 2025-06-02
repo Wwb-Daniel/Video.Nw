@@ -23,8 +23,8 @@ const Navbar: React.FC = () => {
     <>
       <nav className="fixed top-0 left-0 right-0 bg-black border-b border-gray-800 z-50 px-4 py-3 flex justify-between items-center">
         <Link to="/" className="flex items-center">
-          <img src="/logo.svg" alt="Video New Logo" className="h-8 w-8 mr-2" />
-          <span className="text-xl font-bold">VideoNew</span>
+          <img src="/logo (2).png" alt="OmniPlay Logo" className="h-8 w-8 mr-2" />
+          <span className="text-xl font-bold bg-gradient-brand text-transparent bg-clip-text">OmniPlay</span>
         </Link>
         
         <div className="flex items-center space-x-2">
@@ -57,7 +57,7 @@ const Navbar: React.FC = () => {
                     setIsMenuOpen(false);
                   }}
                   className={`w-full flex items-center px-3 py-2 rounded-lg ${
-                    feedType === 'all' ? 'bg-blue-500 text-white' : 'text-gray-300 hover:bg-gray-800'
+                    feedType === 'all' ? 'bg-gradient-brand text-white' : 'text-gray-300 hover:bg-gray-800'
                   }`}
                 >
                   <Compass size={20} className="mr-3" />
@@ -69,7 +69,7 @@ const Navbar: React.FC = () => {
                     setIsMenuOpen(false);
                   }}
                   className={`w-full flex items-center px-3 py-2 rounded-lg mt-1 ${
-                    feedType === 'following' ? 'bg-blue-500 text-white' : 'text-gray-300 hover:bg-gray-800'
+                    feedType === 'following' ? 'bg-gradient-brand text-white' : 'text-gray-300 hover:bg-gray-800'
                   }`}
                 >
                   <Users size={20} className="mr-3" />
@@ -160,7 +160,7 @@ const NavItem: React.FC<NavItemProps> = ({ to, icon, label, isActive, onClick })
       to={to}
       onClick={onClick}
       className={`flex items-center px-3 py-2 rounded-lg ${
-        isActive ? 'bg-blue-500 text-white' : 'text-gray-300 hover:bg-gray-800'
+        isActive ? 'bg-gradient-brand text-white' : 'text-gray-300 hover:bg-gray-800'
       }`}
     >
       <div className="mr-3">{icon}</div>

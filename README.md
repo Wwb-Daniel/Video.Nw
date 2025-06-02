@@ -1,6 +1,6 @@
-# VideoNew - TikTok-like Video Sharing App
+# OmniPlay - Modern Video Sharing Platform
 
-VideoNew is a modern video sharing application built with React, TypeScript, and Supabase. It provides a TikTok-like experience where users can upload, view, and interact with short-form videos.
+OmniPlay is a modern video sharing application built with React, TypeScript, and Supabase. It provides a TikTok-like experience where users can upload, view, and interact with short-form videos.
 
 ## Features
 

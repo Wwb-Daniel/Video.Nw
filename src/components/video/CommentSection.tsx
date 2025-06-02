@@ -75,16 +75,26 @@ const CommentSection: React.FC<CommentSectionProps> = ({ videoId, onClose }) => 
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) throw new Error('Not authenticated');
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('comments')
         .insert({
           content: newComment.trim(),
           content_id: videoId,
+          content_type: 'video',
           user_id: userData.user.id,
-          content_type: 'video'
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
+
+      // Update video comments count
+      const { error: updateError } = await supabase
+        .from('videos')
+        .update({ comments_count: comments.length + 1 })
+        .eq('id', videoId);
+
+      if (updateError) throw updateError;
 
       setNewComment('');
       await fetchComments();

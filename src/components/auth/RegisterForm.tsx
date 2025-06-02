@@ -87,9 +87,9 @@ const RegisterForm: React.FC = () => {
   return (
     <div className="w-full max-w-md">
       <div className="text-center mb-8">
-        <img src="/logo.svg" alt="VideoNew Logo" className="h-16 w-16 mx-auto mb-2" />
-        <h1 className="text-2xl font-bold">Create your account</h1>
-        <p className="text-gray-500">Join VideoNew to share and discover amazing videos</p>
+        <img src="/logo (2).png" alt="OmniPlay Logo" className="h-16 w-16 mx-auto mb-2" />
+        <h1 className="text-2xl font-bold bg-gradient-brand text-transparent bg-clip-text">Create your account</h1>
+        <p className="text-gray-500">Join OmniPlay to share and discover amazing videos</p>
       </div>
       
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -194,7 +194,7 @@ const RegisterForm: React.FC = () => {
       <div className="mt-6 text-center">
         <p className="text-gray-500">
           Already have an account?{' '}
-          <Link to="/auth/login" className="text-blue-500 hover:underline">
+          <Link to="/auth/login" className="text-brand-blue hover:underline">
             Sign in
           </Link>
         </p>

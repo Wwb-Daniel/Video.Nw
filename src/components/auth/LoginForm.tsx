@@ -17,9 +17,9 @@ const LoginForm: React.FC = () => {
   return (
     <div className="w-full max-w-md">
       <div className="text-center mb-8">
-        <img src="/logo.svg" alt="VideoNew Logo" className="h-16 w-16 mx-auto mb-2" />
-        <h1 className="text-2xl font-bold">Welcome back</h1>
-        <p className="text-gray-500">Sign in to continue to VideoNew</p>
+        <img src="/logo (2).png" alt="OmniPlay Logo" className="h-16 w-16 mx-auto mb-2" />
+        <h1 className="text-2xl font-bold bg-gradient-brand text-transparent bg-clip-text">Welcome back</h1>
+        <p className="text-gray-500">Sign in to continue to OmniPlay</p>
       </div>
       
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -52,7 +52,7 @@ const LoginForm: React.FC = () => {
         {error && <p className="text-red-500 text-sm">{error}</p>}
         
         <div className="flex justify-end">
-          <Link to="/auth/forgot-password" className="text-sm text-blue-500 hover:underline">
+          <Link to="/auth/forgot-password" className="text-sm text-brand-blue hover:underline">
             Forgot password?
           </Link>
         </div>
@@ -108,7 +108,7 @@ const LoginForm: React.FC = () => {
       <div className="mt-6 text-center">
         <p className="text-gray-500">
           Don't have an account?{' '}
-          <Link to="/auth/register" className="text-blue-500 hover:underline">
+          <Link to="/auth/register" className="text-brand-blue hover:underline">
             Sign up
           </Link>
         </p>
