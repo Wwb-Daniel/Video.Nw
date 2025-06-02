@@ -8,9 +8,10 @@ import TokenPurchaseModal from '../chat/TokenPurchaseModal';
 interface CommentSectionProps {
   videoId: string;
   onClose: () => void;
+  onCommentAdded: () => void;
 }
 
-const CommentSection: React.FC<CommentSectionProps> = ({ videoId, onClose }) => {
+const CommentSection: React.FC<CommentSectionProps> = ({ videoId, onClose, onCommentAdded }) => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(false);
@@ -88,7 +89,22 @@ const CommentSection: React.FC<CommentSectionProps> = ({ videoId, onClose }) => 
 
       if (error) throw error;
 
-      // Update video comments count
+      // Actualizar el estado local inmediatamente
+      const newCommentWithProfile = {
+        ...data,
+        user_profile: {
+          id: userData.user.id,
+          username: userData.user.user_metadata.username || userData.user.email?.split('@')[0] || 'User',
+          avatar_url: userData.user.user_metadata.avatar_url,
+          is_vip: false
+        }
+      };
+      setComments(prevComments => [newCommentWithProfile, ...prevComments]);
+
+      // Notificar al componente padre para actualizar el contador
+      onCommentAdded();
+
+      // Actualizar el contador en la base de datos
       const { error: updateError } = await supabase
         .from('videos')
         .update({ comments_count: comments.length + 1 })
@@ -97,7 +113,6 @@ const CommentSection: React.FC<CommentSectionProps> = ({ videoId, onClose }) => 
       if (updateError) throw updateError;
 
       setNewComment('');
-      await fetchComments();
     } catch (error: any) {
       console.error('Error posting comment:', error);
       setError('Failed to post comment');

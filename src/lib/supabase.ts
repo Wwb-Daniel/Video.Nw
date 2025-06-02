@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { useViewsStore } from '../store/viewsStore';
 
 // Validate environment variables
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -95,4 +96,37 @@ export type Notification = {
   created_at: string;
   actor_profile?: UserProfile;
   video?: Video;
+}
+
+export async function recordViewAndUpdate(videoId: string) {
+  try {
+    // Registrar la vista en la base de datos
+    const { error: insertError } = await supabase
+      .from('video_views')
+      .insert({
+        video_id: videoId,
+      });
+
+    if (insertError) {
+      // Si es un error de duplicado, lo ignoramos (el usuario ya vio el video)
+      if (insertError.code === '23505') return;
+      throw insertError;
+    }
+
+    // Obtener el contador actualizado desde la base de datos
+    const { data: updatedVideo, error: selectError } = await supabase
+      .from('videos')
+      .select('views_count')
+      .eq('id', videoId)
+      .single();
+
+    if (selectError) throw selectError;
+
+    if (updatedVideo) {
+      // Actualizar el store local
+      useViewsStore.getState().setView(videoId, updatedVideo.views_count);
+    }
+  } catch (error) {
+    console.error('Error recording view:', error);
+  }
 }

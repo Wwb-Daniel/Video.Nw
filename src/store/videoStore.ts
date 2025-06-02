@@ -92,10 +92,11 @@ export const useVideoStore = create<VideoState>((set, get) => ({
       // Get user's liked videos
       const { data: likedVideos } = await supabase
         .from('likes')
-        .select('video_id')
-        .eq('user_id', user.id);
+        .select('content_id')
+        .eq('user_id', user.id)
+        .eq('content_type', 'video');
 
-      const likedIds = likedVideos?.map(v => v.video_id) || [];
+      const likedIds = likedVideos?.map(v => v.content_id) || [];
 
       // Get user's saved videos
       const { data: savedVideos } = await supabase
@@ -121,19 +122,36 @@ export const useVideoStore = create<VideoState>((set, get) => ({
           break;
 
         case 'foryou':
-          // Exclude viewed videos unless liked or saved
-          const excludeIds = viewedIds.filter(id => 
-            !likedIds.includes(id) && !savedIds.includes(id)
-          );
-          
-          if (excludeIds.length > 0) {
-            query = query.not('id', 'in', `(${excludeIds.join(',')})`);
+          // Primero obtenemos los videos no vistos
+          const { data: unseenVideos, error: unseenError } = await supabase
+            .from('videos')
+            .select('id')
+            .not('id', 'in', viewedIds)
+            .order('likes_count', { ascending: false })
+            .order('comments_count', { ascending: false })
+            .order('views_count', { ascending: false })
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+          if (unseenError) throw unseenError;
+
+          if (!unseenVideos || unseenVideos.length === 0) {
+            set({ 
+              videos: [], 
+              hasMore: false, 
+              loading: false,
+              error: 'No hay más videos nuevos para ver. ¡Vuelve más tarde!'
+            });
+            return;
           }
 
-          // Order by engagement score
-          query = query.order('likes_count', { ascending: false })
+          // Si hay videos no vistos, continuamos con la consulta principal
+          query = query
+            .not('id', 'in', viewedIds)
+            .order('likes_count', { ascending: false })
             .order('comments_count', { ascending: false })
-            .order('views_count', { ascending: false });
+            .order('views_count', { ascending: false })
+            .order('created_at', { ascending: false });
           break;
 
         case 'explore':
@@ -340,8 +358,8 @@ export const useVideoStore = create<VideoState>((set, get) => ({
       const user = (await supabase.auth.getUser()).data.user;
       if (!user) throw new Error('User not authenticated');
       
-      // Check if user already liked the video
-      const { data: existingLike, error: checkError } = await supabase
+      // Check for existing like
+      const { data: existingLike } = await supabase
         .from('likes')
         .select()
         .eq('user_id', user.id)
@@ -349,10 +367,8 @@ export const useVideoStore = create<VideoState>((set, get) => ({
         .eq('content_type', 'video')
         .maybeSingle();
         
-      if (checkError) throw checkError;
-
-      // If user hasn't liked the video yet, add the like
       if (!existingLike) {
+        // Add like
         const { error: insertError } = await supabase
           .from('likes')
           .insert({
@@ -363,20 +379,20 @@ export const useVideoStore = create<VideoState>((set, get) => ({
           });
 
         if (insertError) {
-          // If insert fails due to unique constraint, ignore it
-          if (insertError.code !== '23505') {
-            throw insertError;
+          // If it's a unique constraint violation, the like already exists
+          if (insertError.code === '23505') {
+            console.log('Like already exists');
+            return;
           }
+          throw insertError;
         }
 
-        // Get updated likes count
-        const { count: likesCount, error: countError } = await supabase
+        // Get updated counts
+        const { count: likesCount } = await supabase
           .from('likes')
           .select('*', { count: 'exact', head: true })
           .eq('content_type', 'video')
           .eq('content_id', videoId);
-
-        if (countError) throw countError;
 
         // Update video likes count
         const { error: updateError } = await supabase
@@ -387,10 +403,16 @@ export const useVideoStore = create<VideoState>((set, get) => ({
           .eq('id', videoId);
 
         if (updateError) throw updateError;
+
+        // Actualizar el estado local de los videos
+        set((state) => ({
+          videos: state.videos.map(video => 
+            video.id === videoId 
+              ? { ...video, likes_count: likesCount || 0 }
+              : video
+          )
+        }));
       }
-      
-      // Refresh videos to show updated counts
-      await get().fetchVideos(0);
     } catch (error) {
       console.error('Error liking video:', error);
       throw error;

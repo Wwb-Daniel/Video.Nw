@@ -96,12 +96,13 @@ const ProfilePage: React.FC = () => {
         // Fetch liked video IDs first
         const { data: likedVideoIds } = await supabase
           .from('likes')
-          .select('video_id')
-          .eq('user_id', id);
+          .select('content_id')
+          .eq('user_id', id)
+          .eq('content_type', 'video');
 
         // Filter out null values and extract video IDs
         const validLikedVideoIds = (likedVideoIds || [])
-          .map(like => like.video_id)
+          .map(like => like.content_id)
           .filter(Boolean);
 
         if (validLikedVideoIds.length > 0) {

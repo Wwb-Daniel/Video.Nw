@@ -66,7 +66,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ video, isActive }) => {
         .from('likes')
         .select()
         .eq('user_id', user.id)
-        .eq('video_id', video.id)
+        .eq('content_id', video.id)
+        .eq('content_type', 'video')
         .maybeSingle();
 
       setIsLiked(!!data);
@@ -130,50 +131,23 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ video, isActive }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const duration = videoRef.current?.duration || 0;
-      const currentTime = videoRef.current?.currentTime || 0;
-      const watchPercentage = (currentTime / duration) * 100;
-
       // Registrar la vista en video_views
       const { error: viewError } = await supabase
         .from('video_views')
-        .upsert({
+        .insert({
           video_id: video.id,
-          user_id: user.id,
-          watch_duration: Math.floor(currentTime),
-          watch_percentage: watchPercentage,
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'video_id,user_id'
+          user_id: user.id
         });
 
       if (viewError) {
+        // Si es un error de duplicado, lo ignoramos (el usuario ya vio el video)
+        if (viewError.code === '23505') return;
         console.error('Error recording view:', viewError);
         return;
       }
 
-      // Obtener el conteo actual de vistas
-      const { count: viewsCount, error: countError } = await supabase
-        .from('video_views')
-        .select('*', { count: 'exact', head: true })
-        .eq('video_id', video.id);
-
-      if (countError) {
-        console.error('Error getting views count:', countError);
-        return;
-      }
-
-      // Actualizar el contador de vistas en la tabla videos
-      const { error: updateError } = await supabase
-        .from('videos')
-        .update({ 
-          views_count: viewsCount || 0
-        })
-        .eq('id', video.id);
-
-      if (updateError) {
-        console.error('Error updating views count:', updateError);
-      }
+      // El trigger actualizará automáticamente el contador de vistas
+      // No necesitamos actualizar manualmente el contador
     } catch (error) {
       console.error('Error recording view:', error);
     }
@@ -211,34 +185,45 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ video, isActive }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      if (isLiked) {
-        // Remove like
-        const { error } = await supabase
-          .from('likes')
-          .delete()
-          .eq('user_id', user.id)
-          .eq('content_id', video.id)
-          .eq('content_type', 'video');
-
-        if (error) throw error;
-      } else {
+      if (!isLiked) {
         // Add like
         const { error } = await supabase
           .from('likes')
           .insert({
             user_id: user.id,
             content_id: video.id,
-            content_type: 'video'
+            content_type: 'video',
+            video_id: video.id
           });
 
-        if (error) throw error;
-      }
+        if (error) {
+          // If it's a unique constraint violation, the like already exists
+          if (error.code === '23505') {
+            console.log('Like already exists');
+            return;
+          }
+          throw error;
+        }
 
-      setIsLiked(!isLiked);
-      // Refresh video data to update likes count
-      await likeVideo(video.id);
+        // Actualizar el estado local inmediatamente
+        setIsLiked(true);
+        // Incrementar el contador localmente
+        video.likes_count = (video.likes_count || 0) + 1;
+
+        // Actualizar el contador en la base de datos
+        const { error: updateError } = await supabase
+          .from('videos')
+          .update({ 
+            likes_count: video.likes_count
+          })
+          .eq('id', video.id);
+
+        if (updateError) {
+          console.error('Error updating likes count:', updateError);
+        }
+      }
     } catch (error) {
-      console.error('Error toggling like:', error);
+      console.error('Error adding like:', error);
     }
   };
 
@@ -564,6 +549,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ video, isActive }) => {
             <CommentSection
               videoId={video.id}
               onClose={() => setShowComments(false)}
+              onCommentAdded={() => {
+                // Actualizar el contador localmente
+                video.comments_count = (video.comments_count || 0) + 1;
+              }}
             />
           </motion.div>
         )}
