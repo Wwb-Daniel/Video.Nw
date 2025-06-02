@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, MessageCircle } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { useUserStore } from '../../store/userStore';
@@ -12,34 +12,44 @@ interface ProfileHeaderProps {
     username: string;
     avatar_url?: string;
     bio?: string;
-    followers_count: number;
-    following_count: number;
   };
   onEditClick?: () => void;
 }
 
 const ProfileHeader: React.FC<ProfileHeaderProps> = ({ profile, onEditClick }) => {
   const { user } = useAuthStore();
-  const { followUser, unfollowUser, isFollowing } = useUserStore();
+  const { followUser, unfollowUser, isFollowing, getFollowersCount, getFollowingCount } = useUserStore();
   const [following, setFollowing] = useState(false);
   const [showChat, setShowChat] = useState(false);
+  const [followersCount, setFollowersCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
   const isCurrentUser = user?.id === profile.id;
 
-  React.useEffect(() => {
-    const checkFollowStatus = async () => {
+  useEffect(() => {
+    const loadFollowData = async () => {
       if (profile.id) {
-        const status = await isFollowing(profile.id);
-        setFollowing(status);
+        const [followStatus, followers, following] = await Promise.all([
+          isFollowing(profile.id),
+          getFollowersCount(profile.id),
+          getFollowingCount(profile.id)
+        ]);
+        
+        setFollowing(followStatus);
+        setFollowersCount(followers);
+        setFollowingCount(following);
       }
     };
-    checkFollowStatus();
-  }, [profile.id, isFollowing]);
+    
+    loadFollowData();
+  }, [profile.id, isFollowing, getFollowersCount, getFollowingCount]);
 
   const handleFollowClick = async () => {
     if (following) {
       await unfollowUser(profile.id);
+      setFollowersCount(prev => prev - 1);
     } else {
       await followUser(profile.id);
+      setFollowersCount(prev => prev + 1);
     }
     setFollowing(!following);
   };
@@ -66,11 +76,11 @@ const ProfileHeader: React.FC<ProfileHeaderProps> = ({ profile, onEditClick }) =
         
         <div className="flex justify-center mt-6 space-x-12">
           <div className="text-center">
-            <div className="text-xl sm:text-2xl font-bold">{profile.followers_count}</div>
+            <div className="text-xl sm:text-2xl font-bold">{followersCount}</div>
             <div className="text-sm sm:text-base text-gray-400">Followers</div>
           </div>
           <div className="text-center">
-            <div className="text-xl sm:text-2xl font-bold">{profile.following_count}</div>
+            <div className="text-xl sm:text-2xl font-bold">{followingCount}</div>
             <div className="text-sm sm:text-base text-gray-400">Following</div>
           </div>
         </div>

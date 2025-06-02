@@ -10,6 +10,8 @@ interface UserState {
   unfollowUser: (userId: string) => Promise<void>;
   isFollowing: (userId: string) => Promise<boolean>;
   fetchFollowing: () => Promise<void>;
+  getFollowersCount: (userId: string) => Promise<number>;
+  getFollowingCount: (userId: string) => Promise<number>;
 }
 
 export const useUserStore = create<UserState>((set, get) => ({
@@ -96,6 +98,34 @@ export const useUserStore = create<UserState>((set, get) => ({
       set({ error: error.message });
     } finally {
       set({ loading: false });
+    }
+  },
+
+  getFollowersCount: async (userId) => {
+    try {
+      const { count } = await supabase
+        .from('follows')
+        .select('*', { count: 'exact', head: true })
+        .eq('following_id', userId);
+      
+      return count || 0;
+    } catch (error) {
+      console.error('Error getting followers count:', error);
+      return 0;
+    }
+  },
+
+  getFollowingCount: async (userId) => {
+    try {
+      const { count } = await supabase
+        .from('follows')
+        .select('*', { count: 'exact', head: true })
+        .eq('follower_id', userId);
+      
+      return count || 0;
+    } catch (error) {
+      console.error('Error getting following count:', error);
+      return 0;
     }
   },
 }));
